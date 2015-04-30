@@ -1,0 +1,9 @@
+name: Commerce Store Hierarchy
+type: module
+description: 'Hierachical store access and inherentance.'
+package: Commerce
+core: 8.x
+dependencies:
+- commerce
+- commerce_store
+version: '8.x-2.x-dev'

@@ -1,0 +1,7 @@
+entity.commerce_store.collection:
+  path: 'admin/commerce/config/store'
+  defaults:
+    _form: 'Drupal\commerce_store_hierarchy\OverviewStores'
+    _title: 'Stores'
+  requirements:
+    _permission: 'administer stores'

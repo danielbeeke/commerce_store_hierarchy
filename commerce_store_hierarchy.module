@@ -1,0 +1,21 @@
+<?php
+
+use Drupal\Core\Field\BaseFieldDefinition;
+
+function commerce_store_hierarchy_entity_base_field_info_alter(&$fields, \Drupal\Core\Entity\EntityTypeInterface $entity_type) {
+  if ($entity_type->id() == 'commerce_store') {
+
+    $fields['weight'] = BaseFieldDefinition::create('integer')
+      ->setLabel(t('Weight'))
+      ->setDescription(t('The weight of the store.'))
+      ->setReadOnly(FALSE)
+      ->setSetting('unsigned', FALSE)
+      ->setName('weight')
+      ->setTargetEntityTypeId('commerce_store');
+
+  }
+}
+
+function commerce_store_hierarchy_sort_stores_by_weight($a, $b) {
+  return ($a->weight->value < $b->weight->value) ? -1 : 1;
+}
