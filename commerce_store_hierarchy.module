@@ -11,11 +11,29 @@ function commerce_store_hierarchy_entity_base_field_info_alter(&$fields, \Drupal
       ->setReadOnly(FALSE)
       ->setSetting('unsigned', FALSE)
       ->setName('weight')
+      ->setDefaultValue(0)
       ->setTargetEntityTypeId('commerce_store');
 
-  }
-}
+    $fields['depth'] = BaseFieldDefinition::create('integer')
+      ->setLabel(t('Depth'))
+      ->setDescription(t('The depth of the store.'))
+      ->setReadOnly(FALSE)
+      ->setSetting('unsigned', TRUE)
+      ->setName('depth')
+      ->setDefaultValue(0)
+      ->setTargetEntityTypeId('commerce_store');
 
-function commerce_store_hierarchy_sort_stores_by_weight($a, $b) {
-  return ($a->weight->value < $b->weight->value) ? -1 : 1;
+    $fields['parent'] = BaseFieldDefinition::create('entity_reference')
+      ->setLabel(t('Store Parents'))
+      ->setDescription(t('The parents of this store.'))
+      ->setSetting('target_type', 'commerce_store')
+      ->setCardinality(BaseFieldDefinition::CARDINALITY_UNLIMITED)
+      ->setTargetEntityTypeId('commerce_store')
+      ->setDisplayOptions('form', [
+        'type' => 'entity_reference_autocomplete',
+        'weight' => 50,
+      ])
+      ->setName('parent');
+
+  }
 }
