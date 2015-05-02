@@ -64,27 +64,57 @@ class OverviewStores extends FormBase {
     return 'commerce_store_hierarchy_overview_stores';
   }
 
+  public function getStoresTree() {
+    $root_stores = db_select('commerce_store_field_data', 'cs')
+    ->isNull('depth')
+    ->orderBy('weight')
+    ->fields('cs')
+    ->execute()
+    ->fetchAll();
 
-  public function sort_stores_by_weight($a, $b) {
-    if ($a->parent->value && $a->parent->value == $b->id->value) {
-      return -1;
+    $stores_tree = array();
+
+    $depth = -1;
+
+    foreach ($root_stores as $root_store) {
+      $this->getTree($root_store, $stores_tree, $depth);
     }
 
-    return ($a->weight->value < $b->weight->value) ? -1 : 1;
+    return $stores_tree;
+  }
+
+  public function getTree($parent_store, &$stores_tree = array(), &$depth = 0) {
+    $depth++;
+
+    $parent_store_entity = entity_load('commerce_store', $parent_store->store_id);
+    $stores_tree[$parent_store->store_id] = $parent_store_entity;
+
+    $query = db_select('commerce_store_field_data', 'cs');
+    $query->join('commerce_store__parent', 'csp', 'cs.store_id = csp.entity_id');
+    $query->condition('parent_target_id', $parent_store->store_id)
+    ->orderBy('weight')
+    ->fields('cs');
+
+    $child_stores = $query->execute()->fetchAll();
+
+    foreach ($child_stores as $child_store) {
+      if (!in_array($child_store->store_id, array_keys($stores_tree))) {
+        $this->getTree($child_store, $stores_tree, $depth);
+      }
+    }
+
+    $depth--;
   }
 
   /**
    * {@inheritdoc}
    */
   public function buildForm(array $form, FormStateInterface $form_state) {
-    $stores = $this->storageController->loadMultiple();
-
-    uasort($stores, array($this, 'sort_stores_by_weight'));
+    $stores = $this->getStoresTree();
 
     $form['stores'] = array(
       '#type' => 'table',
-      // '#header' => array($this->t('Name'), $this->t('Type'), $this->t('E-mail'), $this->t('Currency'), $this->t('Weight')),
-      '#header' => array($this->t('Name'), $this->t('Weight'), $this->t('Depth'), $this->t('Parent'), $this->t('Weight')),
+      '#header' => array($this->t('Name'), $this->t('Type'), $this->t('E-mail'), $this->t('Currency'), $this->t('Weight')),
       '#empty' => $this->t('No stores found, create first a store.'),
       '#attributes' => array(
         'id' => 'stores',
@@ -134,13 +164,9 @@ class OverviewStores extends FormBase {
 
       $storeType = StoreType::load($store->bundle());
 
-      $form['stores'][$key]['weight_label']['#markup'] = $store->weight->value;
-      $form['stores'][$key]['depth']['#markup'] = $store->depth->value;
-      $form['stores'][$key]['parent']['#markup'] = $store->parent->target_id;
-
-      // $form['stores'][$key]['type']['#markup'] = SafeMarkup::checkPlain($storeType->label());
-      // $form['stores'][$key]['mail']['#markup'] = $store->getEmail();
-      // $form['stores'][$key]['default_currency']['#markup'] = $store->getDefaultCurrency();
+      $form['stores'][$key]['type']['#markup'] = SafeMarkup::checkPlain($storeType->label());
+      $form['stores'][$key]['mail']['#markup'] = $store->getEmail();
+      $form['stores'][$key]['default_currency']['#markup'] = $store->getDefaultCurrency();
 
       $form['stores'][$key]['weight'] = array(
         '#type' => 'weight',
@@ -197,18 +223,18 @@ class OverviewStores extends FormBase {
     foreach($values['stores'] as $store_value) {
       $store = entity_load('commerce_store', $store_value['store']['sid']);
 
-      if ($store_value['store']['parent']) {
-
-        $parent = entity_load('commerce_store', $store_value['store']['parent']);
-        $store->set('parent', $parent->id());
+      if ($store_value['store']['depth'] && $store_value['store']['parent']) {
+        $store->set('depth', $store_value['store']['depth']);
+        $store->set('parent', $store_value['store']['parent']);
         $store->set('weight', NULL);
       }
+
       else {
         $store->set('weight', $store_value['weight']);
         $store->set('parent', NULL);
+        $store->set('depth', NULL);
       }
 
-      $store->set('depth', $store_value['store']['depth']);
       $store->save();
     }
   }
